@@ -89,6 +89,47 @@ body { padding-top: 24px; }
 }
 .cashier-name { font-family: var(--font-label); font-size: 14px; font-weight: 700; color: var(--coffee); }
 .cashier-role { font-size: 11px; color: var(--sage); font-weight: 500; }
+
+/* === ABRIR TURNO === */
+#screen-turno {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  background: var(--paper);
+}
+.turno-card {
+  background: var(--bone); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md); padding: 40px 48px;
+  display: flex; flex-direction: column; align-items: center; gap: 24px;
+  min-width: 360px;
+}
+.turno-title { font-family: var(--font-label); font-size: 20px; font-weight: 700; }
+.turno-meta  { font-size: 13px; color: var(--sage); }
+.turno-field { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.turno-field label {
+  font-family: var(--font-label); font-size: 11px; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--sage);
+}
+.turno-field input {
+  border: 1.5px solid var(--linen); border-radius: var(--radius-sm);
+  padding: 12px 14px; font-size: 24px; font-weight: 600;
+  color: var(--coffee); background: var(--paper);
+  text-align: center; width: 100%; outline: none;
+  transition: border-color .15s;
+}
+.turno-field input:focus { border-color: var(--sage); }
+.btn-primary {
+  width: 100%; padding: 14px; border-radius: var(--radius-md);
+  background: var(--sage); color: var(--bone);
+  font-family: var(--font-label); font-size: 15px; font-weight: 700;
+  letter-spacing: .04em; transition: background .15s;
+}
+.btn-primary:hover { background: var(--sage-d); }
+.btn-ghost {
+  background: none; color: var(--sage); font-size: 13px; font-weight: 600;
+  text-decoration: underline; padding: 4px;
+}
 </style>
 </head>
 <body>
@@ -246,7 +287,62 @@ function buildLogin() {
 
   el.append(logoWrap, cards);
 }
-function buildTurno()   {}
+function buildTurno() {
+  const el = document.getElementById('screen-turno');
+
+  const card = document.createElement('div');
+  card.className = 'turno-card';
+
+  const title = document.createElement('h2');
+  title.className = 'turno-title';
+  title.textContent = 'Abrir turno';
+
+  const meta = document.createElement('p');
+  meta.className = 'turno-meta';
+
+  const field = document.createElement('div');
+  field.className = 'turno-field';
+
+  const lbl = document.createElement('label');
+  lbl.textContent = 'Efectivo inicial en caja';
+
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.min = '0';
+  inp.step = '0.01';
+  inp.placeholder = '0.00';
+  inp.id = 'turno-cash-input';
+
+  field.append(lbl, inp);
+
+  const btnAbrir = document.createElement('button');
+  btnAbrir.className = 'btn-primary';
+  btnAbrir.textContent = 'Abrir turno';
+  btnAbrir.addEventListener('click', () => {
+    STATE.turnoCash = parseFloat(inp.value) || 0;
+    STATE.turnoStart = new Date();
+    inp.value = '';
+    showScreen('pos');
+  });
+
+  const btnBack = document.createElement('button');
+  btnBack.className = 'btn-ghost';
+  btnBack.textContent = '← Cambiar cajera';
+  btnBack.addEventListener('click', () => showScreen('login'));
+
+  card.append(title, meta, field, btnAbrir, btnBack);
+  el.appendChild(card);
+
+  el._onShow = () => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-MX', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    meta.textContent = (STATE.cashier ? STATE.cashier.name : '') + ' · ' + dateStr;
+    inp.value = '';
+    inp.focus();
+  };
+}
 function buildPos()     {}
 function buildPayment() {}
 function buildReceipt() {}
