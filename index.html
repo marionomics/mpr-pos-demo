@@ -363,6 +363,95 @@ body { padding-top: 24px; }
 .numpad-key:hover  { background: var(--linen); }
 .numpad-key:active { transform: scale(.94); }
 .numpad-key.special { font-size: 12px; color: var(--sage); }
+
+/* === COBRAR === */
+#screen-cobrar {
+  flex-direction: column; align-items: center; justify-content: center;
+  background: var(--paper); overflow-y: auto;
+}
+.cobrar-wrap {
+  background: var(--bone); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg); width: 560px; max-width: 95vw;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.cobrar-header { background: var(--sage); color: var(--bone); padding: 24px 28px; }
+.cobrar-label {
+  font-family: var(--font-label); font-size: 11px; font-weight: 700;
+  letter-spacing: .15em; text-transform: uppercase; opacity: .8;
+}
+.cobrar-total {
+  font-family: var(--font-label); font-size: 40px; font-weight: 800; line-height: 1.1; margin-top: 4px;
+}
+.cobrar-body { padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; }
+.cobrar-section-label {
+  font-family: var(--font-label); font-size: 11px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--sage);
+}
+.payment-methods { display: flex; flex-wrap: wrap; gap: 8px; }
+.payment-method-btn {
+  border: 2px solid var(--linen); border-radius: var(--radius-md);
+  padding: 10px 16px; display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-label); font-size: 13px; font-weight: 600;
+  color: var(--coffee); background: var(--paper); transition: border-color .12s, background .12s;
+}
+.payment-method-btn:hover   { border-color: var(--sage); background: var(--bone); }
+.payment-method-btn.selected { border-color: var(--sage); background: var(--sage); color: var(--bone); }
+.pm-icon { font-size: 18px; }
+.payment-amount-row { display: flex; gap: 10px; align-items: center; }
+.payment-amount-row label {
+  font-family: var(--font-label); font-size: 12px; font-weight: 700;
+  letter-spacing: .08em; color: var(--sage); white-space: nowrap;
+}
+.payment-amount-input {
+  flex: 1; border: 1.5px solid var(--linen); border-radius: var(--radius-sm);
+  padding: 10px 14px; font-size: 20px; font-weight: 700;
+  color: var(--coffee); background: var(--paper); outline: none;
+  transition: border-color .12s; text-align: right;
+}
+.payment-amount-input:focus { border-color: var(--sage); }
+.btn-add-payment {
+  border: 2px dashed var(--linen); border-radius: var(--radius-md);
+  padding: 10px 16px; color: var(--sage);
+  font-family: var(--font-label); font-size: 13px; font-weight: 600;
+  transition: border-color .12s, color .12s;
+}
+.btn-add-payment:hover { border-color: var(--sage); color: var(--coffee); }
+.payments-log { display: flex; flex-direction: column; gap: 6px; }
+.payment-log-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--paper); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px;
+}
+.payment-log-icon { font-size: 16px; }
+.payment-log-label { flex: 1; font-weight: 500; }
+.payment-log-amount { font-family: var(--font-label); font-weight: 700; }
+.payment-log-del { color: var(--sage); font-size: 16px; cursor: pointer; transition: color .12s; }
+.payment-log-del:hover { color: var(--carmin); }
+.payment-balance {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0; border-top: 1px solid var(--linen);
+}
+.balance-label { font-family: var(--font-label); font-size: 13px; font-weight: 600; color: var(--sage); }
+.balance-val   { font-family: var(--font-label); font-size: 22px; font-weight: 800; }
+.balance-val.ok      { color: var(--sage); }
+.balance-val.change  { color: #7A9A28; }
+.balance-val.pending { color: var(--carmin); }
+.cobrar-actions {
+  display: flex; gap: 10px; padding: 20px 28px; border-top: 1px solid var(--linen);
+}
+.btn-cancel-cobrar {
+  flex: 1; padding: 13px; border: 2px solid var(--linen); border-radius: var(--radius-md);
+  font-family: var(--font-label); font-size: 14px; font-weight: 700;
+  color: var(--coffee); transition: border-color .12s;
+}
+.btn-cancel-cobrar:hover { border-color: var(--petal); }
+.btn-confirm-payment {
+  flex: 2; padding: 13px; background: var(--coral); color: var(--bone);
+  border-radius: var(--radius-md); font-family: var(--font-label);
+  font-size: 15px; font-weight: 800; letter-spacing: .04em;
+  transition: background .15s, opacity .15s;
+}
+.btn-confirm-payment:hover    { background: #e8604f; }
+.btn-confirm-payment:disabled { opacity: .4; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -1083,7 +1172,219 @@ function buildPos() {
     if (typeof fillPosBody === 'function') fillPosBody();
   };
 }
-function buildPayment() {}
+let selectedMethodId = null;
+
+function buildPayment() {
+  const el = document.getElementById('screen-cobrar');
+
+  const wrap = document.createElement('div');
+  wrap.className = 'cobrar-wrap';
+
+  /* Header */
+  const hdr = document.createElement('div');
+  hdr.className = 'cobrar-header';
+  const hdrLbl = document.createElement('div');
+  hdrLbl.className = 'cobrar-label';
+  hdrLbl.textContent = 'Total a cobrar';
+  const hdrAmt = document.createElement('div');
+  hdrAmt.className = 'cobrar-total';
+  hdrAmt.id = 'cobrar-total-display';
+  hdrAmt.textContent = fmt(0);
+  hdr.append(hdrLbl, hdrAmt);
+
+  /* Body */
+  const body = document.createElement('div');
+  body.className = 'cobrar-body';
+
+  const methodsLabel = document.createElement('div');
+  methodsLabel.className = 'cobrar-section-label';
+  methodsLabel.textContent = 'Método de pago';
+
+  const methodsWrap = document.createElement('div');
+  methodsWrap.className = 'payment-methods';
+
+  PAYMENT_METHODS.forEach(pm => {
+    const btn = document.createElement('button');
+    btn.className = 'payment-method-btn';
+    btn.dataset.id = pm.id;
+    const ic = document.createElement('span');
+    ic.className = 'pm-icon';
+    ic.textContent = pm.icon;
+    const lb = document.createElement('span');
+    lb.textContent = pm.label;
+    btn.append(ic, lb);
+    btn.addEventListener('click', () => selectPaymentMethod(pm.id));
+    methodsWrap.appendChild(btn);
+  });
+
+  const amtRow = document.createElement('div');
+  amtRow.className = 'payment-amount-row';
+  const amtLbl = document.createElement('label');
+  amtLbl.textContent = 'Monto:';
+  const amtInp = document.createElement('input');
+  amtInp.type = 'number';
+  amtInp.min = '0';
+  amtInp.step = '0.01';
+  amtInp.className = 'payment-amount-input';
+  amtInp.id = 'payment-amount-input';
+  amtInp.placeholder = '0.00';
+  amtRow.append(amtLbl, amtInp);
+
+  const btnAddPay = document.createElement('button');
+  btnAddPay.className = 'btn-add-payment';
+  btnAddPay.textContent = '+ Agregar pago';
+  btnAddPay.id = 'btn-add-payment';
+  btnAddPay.addEventListener('click', addPayment);
+
+  const logWrap = document.createElement('div');
+  logWrap.className = 'payments-log';
+  logWrap.id = 'payments-log';
+
+  const balRow = document.createElement('div');
+  balRow.className = 'payment-balance';
+  const balLbl = document.createElement('div');
+  balLbl.className = 'balance-label';
+  balLbl.id = 'balance-label';
+  balLbl.textContent = 'Pendiente';
+  const balVal = document.createElement('div');
+  balVal.className = 'balance-val pending';
+  balVal.id = 'balance-val';
+  balVal.textContent = fmt(0);
+  balRow.append(balLbl, balVal);
+
+  body.append(methodsLabel, methodsWrap, amtRow, btnAddPay, logWrap, balRow);
+
+  /* Actions */
+  const actions = document.createElement('div');
+  actions.className = 'cobrar-actions';
+  const btnCancel = document.createElement('button');
+  btnCancel.className = 'btn-cancel-cobrar';
+  btnCancel.textContent = 'Cancelar';
+  btnCancel.addEventListener('click', () => showScreen('pos'));
+  const btnConfirm = document.createElement('button');
+  btnConfirm.className = 'btn-confirm-payment';
+  btnConfirm.textContent = 'Confirmar pago';
+  btnConfirm.id = 'btn-confirm-payment';
+  btnConfirm.disabled = true;
+  btnConfirm.addEventListener('click', confirmPayment);
+  actions.append(btnCancel, btnConfirm);
+
+  wrap.append(hdr, body, actions);
+  el.appendChild(wrap);
+
+  el._onShow = () => {
+    selectedMethodId = null;
+    document.querySelectorAll('.payment-method-btn').forEach(b => b.classList.remove('selected'));
+    const tot = cartTotal();
+    const td = document.getElementById('cobrar-total-display');
+    if (td) td.textContent = fmt(tot);
+    const ai = document.getElementById('payment-amount-input');
+    if (ai) ai.value = tot.toFixed(2);
+    refreshPaymentUI();
+  };
+}
+
+function selectPaymentMethod(id) {
+  selectedMethodId = id;
+  document.querySelectorAll('.payment-method-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.id === id);
+  });
+  const tot      = cartTotal();
+  const covered  = paymentTotal();
+  const remaining = Math.max(0, tot - covered);
+  const ai = document.getElementById('payment-amount-input');
+  if (ai) {
+    ai.value = remaining > 0 ? remaining.toFixed(2) : tot.toFixed(2);
+    ai.focus();
+  }
+}
+
+function addPayment() {
+  if (!selectedMethodId) return;
+  const ai = document.getElementById('payment-amount-input');
+  const amount = parseFloat(ai ? ai.value : 0) || 0;
+  if (amount <= 0) return;
+  const pm = PAYMENT_METHODS.find(p => p.id === selectedMethodId);
+  if (!pm) return;
+  STATE.payments.push({ method: pm, amount });
+  selectedMethodId = null;
+  document.querySelectorAll('.payment-method-btn').forEach(b => b.classList.remove('selected'));
+  if (ai) ai.value = '';
+  refreshPaymentUI();
+}
+
+function removePayment(idx) {
+  STATE.payments.splice(idx, 1);
+  refreshPaymentUI();
+}
+
+function refreshPaymentUI() {
+  const tot     = cartTotal();
+  const covered = paymentTotal();
+  const diff    = covered - tot;
+
+  const log = document.getElementById('payments-log');
+  if (log) {
+    while (log.firstChild) log.removeChild(log.firstChild);
+    STATE.payments.forEach((p, idx) => {
+      const row = document.createElement('div');
+      row.className = 'payment-log-row';
+      const ic = document.createElement('span');
+      ic.className = 'payment-log-icon';
+      ic.textContent = p.method.icon;
+      const lb = document.createElement('span');
+      lb.className = 'payment-log-label';
+      lb.textContent = p.method.label;
+      const am = document.createElement('span');
+      am.className = 'payment-log-amount';
+      am.textContent = fmt(p.amount);
+      const dl = document.createElement('button');
+      dl.className = 'payment-log-del';
+      dl.textContent = '×';
+      dl.addEventListener('click', () => removePayment(idx));
+      row.append(ic, lb, am, dl);
+      log.appendChild(row);
+    });
+  }
+
+  const balLbl = document.getElementById('balance-label');
+  const balVal = document.getElementById('balance-val');
+  if (balLbl && balVal) {
+    balVal.className = 'balance-val';
+    if (diff > 0.001) {
+      balLbl.textContent = 'Cambio';
+      balVal.textContent = fmt(diff);
+      balVal.classList.add('change');
+    } else if (covered >= tot - 0.001) {
+      balLbl.textContent = 'Cubierto';
+      balVal.textContent = fmt(tot);
+      balVal.classList.add('ok');
+    } else {
+      balLbl.textContent = 'Pendiente';
+      balVal.textContent = fmt(tot - covered);
+      balVal.classList.add('pending');
+    }
+  }
+
+  const btnConfirm = document.getElementById('btn-confirm-payment');
+  if (btnConfirm) btnConfirm.disabled = covered < tot - 0.001;
+
+  const btnAdd = document.getElementById('btn-add-payment');
+  if (btnAdd) btnAdd.style.display = covered >= tot - 0.001 ? 'none' : '';
+}
+
+function confirmPayment() {
+  STATE.lastSale = {
+    number:   STATE.saleNumber++,
+    cashier:  STATE.cashier,
+    items:    STATE.cart.map(l => ({ ...l })),
+    payments: STATE.payments.map(p => ({ ...p })),
+    total:    cartTotal(),
+    date:     new Date(),
+  };
+  showScreen('recibo');
+}
+
 function buildReceipt() {}
 
 /* ============================================================
