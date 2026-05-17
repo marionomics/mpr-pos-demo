@@ -632,11 +632,6 @@ function fillPosBody() {
   prodPanel.append(catBar, grid);
   body.append(cartPanel, prodPanel);
 
-  const searchEl = document.getElementById('pos-search');
-  if (searchEl) {
-    searchEl.addEventListener('input', renderProducts);
-  }
-
   renderProducts();
   renderCart();
 }
@@ -887,6 +882,7 @@ function buildPos() {
   tInput.type = 'search';
   tInput.placeholder = 'Buscar producto...';
   tInput.id = 'pos-search';
+  tInput.addEventListener('input', renderProducts);
   tSearch.appendChild(tInput);
 
   const tRight = document.createElement('div');
