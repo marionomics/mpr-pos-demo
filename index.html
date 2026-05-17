@@ -786,9 +786,8 @@ function numPress(key) {
   }
 
   if (key === '+10') {
-    if (STATE.numMode === 'qty') {
-      STATE.cart[STATE.selectedCartIdx].qty += 10;
-    }
+    if (STATE.numMode !== 'qty') return;
+    STATE.cart[STATE.selectedCartIdx].qty += 10;
     STATE.numBuffer = '';
     renderCart();
     updateNumpad();
@@ -1212,6 +1211,13 @@ function buildPos() {
   el.append(sidebar, main);
 
   el._onShow = () => {
+    const searchInput = document.getElementById('pos-search');
+    if (searchInput) searchInput.value = '';
+    activeCategory = 'Todos';
+    document.querySelectorAll('.cat-pill').forEach(p => {
+      p.classList.toggle('active', p.textContent === 'Todos');
+    });
+
     const av = document.getElementById('drawer-user');
     if (av && STATE.cashier) {
       while (av.firstChild) av.removeChild(av.firstChild);
