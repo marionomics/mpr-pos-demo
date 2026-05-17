@@ -53,6 +53,42 @@ body { padding-top: 24px; }
 /* === SCREEN SYSTEM === */
 .screen { display: none; width: 100%; height: calc(100vh - 24px); overflow: hidden; }
 .screen.active { display: flex; }
+
+/* === LOGIN === */
+#screen-login {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  background: var(--paper);
+}
+.login-logo { height: 72px; object-fit: contain; }
+.login-logo-placeholder {
+  font-family: var(--font-label); font-size: 26px; font-weight: 800;
+  color: var(--coffee); letter-spacing: .04em;
+}
+.login-subtitle {
+  font-family: var(--font-label); font-size: 12px; font-weight: 600;
+  letter-spacing: .15em; text-transform: uppercase; color: var(--sage);
+  margin-top: -32px;
+}
+.login-cards { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+.cashier-card {
+  background: var(--bone); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm); padding: 28px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  cursor: pointer; transition: box-shadow .15s, transform .15s;
+  min-width: 130px;
+}
+.cashier-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.cashier-avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--petal); color: var(--coffee);
+  font-family: var(--font-label); font-size: 18px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.cashier-name { font-family: var(--font-label); font-size: 14px; font-weight: 700; color: var(--coffee); }
+.cashier-role { font-size: 11px; color: var(--sage); font-weight: 500; }
 </style>
 </head>
 <body>
@@ -157,7 +193,59 @@ function showScreen(id) {
 /* ============================================================
    SCREEN BUILDERS — stubs (filled in Tasks 4-10)
    ============================================================ */
-function buildLogin()   {}
+function buildLogin() {
+  const el = document.getElementById('screen-login');
+
+  const logoWrap = document.createElement('div');
+  logoWrap.style.textAlign = 'center';
+
+  const img = document.createElement('img');
+  img.src = 'assets/logo_head_clean.png';
+  img.alt = 'MPR';
+  img.className = 'login-logo';
+  img.onerror = function() {
+    this.style.display = 'none';
+    const txt = document.createElement('div');
+    txt.className = 'login-logo-placeholder';
+    txt.textContent = 'MPR';
+    logoWrap.appendChild(txt);
+  };
+  logoWrap.appendChild(img);
+
+  const sub = document.createElement('p');
+  sub.className = 'login-subtitle';
+  sub.textContent = 'Punto de Venta';
+  logoWrap.appendChild(sub);
+
+  const cards = document.createElement('div');
+  cards.className = 'login-cards';
+
+  CASHIERS.forEach(c => {
+    const card = document.createElement('button');
+    card.className = 'cashier-card';
+    card.addEventListener('click', () => {
+      STATE.cashier = c;
+      showScreen('turno');
+    });
+
+    const av = document.createElement('div');
+    av.className = 'cashier-avatar';
+    av.textContent = c.avatar;
+
+    const nm = document.createElement('div');
+    nm.className = 'cashier-name';
+    nm.textContent = c.name;
+
+    const rl = document.createElement('div');
+    rl.className = 'cashier-role';
+    rl.textContent = c.role;
+
+    card.append(av, nm, rl);
+    cards.appendChild(card);
+  });
+
+  el.append(logoWrap, cards);
+}
 function buildTurno()   {}
 function buildPos()     {}
 function buildPayment() {}
