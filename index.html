@@ -1,5 +1,179 @@
 <!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"><title>MPR POS — Coming soon</title></head>
-<body><p>Cargando...</p></body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPR POS — DEMO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* === TOKENS === */
+:root {
+  --coffee:  #3A1E1A;
+  --bone:    #FFFDF9;
+  --paper:   #F4F1EC;
+  --linen:   #EBE5DC;
+  --blush:   #F1C8CE;
+  --petal:   #E4B0B7;
+  --sage:    #7E938F;
+  --sage-d:  #6F837F;
+  --lime:    #BFD96A;
+  --coral:   #FB6C5D;
+  --carmin:  #B40D12;
+
+  --font-label: 'Montserrat', sans-serif;
+  --font-body:  'Inter', sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 3px rgba(58,30,26,.08);
+  --shadow-md: 0 4px 16px rgba(58,30,26,.12);
+  --shadow-lg: 0 8px 32px rgba(58,30,26,.16);
+}
+
+/* === RESET === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: var(--font-body); background: var(--paper); color: var(--coffee); }
+button { cursor: pointer; border: none; background: none; font-family: inherit; }
+input  { font-family: inherit; }
+
+/* === DEMO BANNER === */
+#demo-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+  background: var(--coral); color: var(--bone);
+  font-family: var(--font-label); font-size: 11px; font-weight: 700;
+  letter-spacing: .12em; text-align: center; padding: 4px;
+  text-transform: uppercase;
+}
+body { padding-top: 24px; }
+
+/* === SCREEN SYSTEM === */
+.screen { display: none; width: 100%; height: calc(100vh - 24px); overflow: hidden; }
+.screen.active { display: flex; }
+</style>
+</head>
+<body>
+
+<div id="demo-banner">DEMO — Sistema en desarrollo</div>
+
+<div id="screen-login"    class="screen"></div>
+<div id="screen-turno"    class="screen"></div>
+<div id="screen-pos"      class="screen"></div>
+<div id="screen-cobrar"   class="screen"></div>
+<div id="screen-recibo"   class="screen"></div>
+
+<script>
+/* ============================================================
+   STATE
+   ============================================================ */
+const STATE = {
+  cashier:          null,
+  turnoCash:        0,
+  turnoStart:       null,
+  cart:             [],
+  selectedCartIdx:  -1,
+  numMode:          'qty',
+  numBuffer:        '',
+  payments:         [],
+  saleNumber:       1001,
+  lastSale:         null,
+};
+
+/* ============================================================
+   DATA
+   ============================================================ */
+const CASHIERS = [
+  { name: 'Diana',  role: 'Cajera',    avatar: 'DI' },
+  { name: 'Paola',  role: 'Cajera',    avatar: 'PA' },
+  { name: 'Masha',  role: 'Gerente',   avatar: 'MA' },
+  { name: 'Mario',  role: 'Admin',     avatar: 'MR' },
+];
+
+const PRODUCTS = [
+  { id:  1, name: 'Moscú Classic',        category: 'Extensiones',  price: 120, img: 'assets/product_moscu.jpg' },
+  { id:  2, name: 'San Petersburgo Pro',  category: 'Extensiones',  price: 150, img: 'assets/product_san_petersburgo.jpg' },
+  { id:  3, name: 'Curler Premium',       category: 'Herramientas', price: 280, img: null },
+  { id:  4, name: 'Adhesivo Express',     category: 'Adhesivos',    price:  95, img: null },
+  { id:  5, name: 'Removedor Gel',        category: 'Adhesivos',    price:  65, img: null },
+  { id:  6, name: 'Tweezers Pro',         category: 'Herramientas', price: 190, img: null },
+  { id:  7, name: 'Volumen Ruso 0.07',    category: 'Extensiones',  price: 135, img: null },
+  { id:  8, name: 'Clásicas 0.15',        category: 'Extensiones',  price: 110, img: null },
+  { id:  9, name: 'Parche Hidrogel',      category: 'Accesorios',   price:  45, img: null },
+  { id: 10, name: 'Base Protectora',      category: 'Cuidado',      price:  85, img: null },
+  { id: 11, name: 'Cepillo Espiral',      category: 'Accesorios',   price:  35, img: null },
+  { id: 12, name: 'Kit Starter',          category: 'Kits',         price: 420, img: null },
+];
+
+const CATEGORIES = ['Todos', ...new Set(PRODUCTS.map(p => p.category))];
+
+const PAYMENT_METHODS = [
+  { id: 'cash',  label: 'Efectivo',       icon: '💵' },
+  { id: 'card',  label: 'Tarjeta',        icon: '💳' },
+  { id: 'spei',  label: 'Transferencia',  icon: '🏦' },
+  { id: 'mp',    label: 'Mercado Pago',   icon: '📱' },
+  { id: 'clip',  label: 'Clip',           icon: '📲' },
+];
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function fmt(n) {
+  return '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function cartTotal() {
+  return STATE.cart.reduce((sum, line) => {
+    const base = (line.priceOverride !== null ? line.priceOverride : line.product.price) * line.qty;
+    return sum + base * (1 - line.discount / 100);
+  }, 0);
+}
+
+function cartClear() {
+  STATE.cart             = [];
+  STATE.selectedCartIdx  = -1;
+  STATE.numBuffer        = '';
+  STATE.numMode          = 'qty';
+}
+
+function paymentTotal() {
+  return STATE.payments.reduce((s, p) => s + p.amount, 0);
+}
+
+/* ============================================================
+   SCREEN ROUTER
+   ============================================================ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById('screen-' + id);
+  if (target) {
+    target.classList.add('active');
+    if (target._onShow) target._onShow();
+  }
+}
+
+/* ============================================================
+   SCREEN BUILDERS — stubs (filled in Tasks 4-10)
+   ============================================================ */
+function buildLogin()   {}
+function buildTurno()   {}
+function buildPos()     {}
+function buildPayment() {}
+function buildReceipt() {}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  buildLogin();
+  buildTurno();
+  buildPos();
+  buildPayment();
+  buildReceipt();
+  showScreen('login');
+});
+</script>
+</body>
 </html>
