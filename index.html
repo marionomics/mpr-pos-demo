@@ -452,6 +452,67 @@ body { padding-top: 24px; }
 }
 .btn-confirm-payment:hover    { background: #e8604f; }
 .btn-confirm-payment:disabled { opacity: .4; cursor: not-allowed; }
+
+/* === RECIBO === */
+#screen-recibo {
+  flex-direction: column; align-items: center;
+  background: var(--paper); overflow-y: auto;
+  padding: 24px 0;
+}
+.recibo-wrap {
+  background: var(--bone); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg); width: 420px; max-width: 95vw;
+  padding: 32px 28px; display: flex; flex-direction: column; gap: 20px;
+}
+.recibo-header { text-align: center; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.recibo-biz   { font-family: var(--font-label); font-size: 18px; font-weight: 800; }
+.recibo-meta  { font-size: 11px; color: var(--sage); }
+.recibo-sale-num {
+  font-family: var(--font-label); font-size: 12px; font-weight: 700;
+  color: var(--blush); background: var(--coffee);
+  border-radius: 20px; padding: 3px 12px; margin-top: 4px;
+}
+.recibo-divider { border: none; border-top: 1px dashed var(--linen); }
+.recibo-lines   { display: flex; flex-direction: column; gap: 8px; }
+.recibo-line    { display: flex; justify-content: space-between; align-items: flex-start; font-size: 13px; gap: 8px; }
+.recibo-line-name { flex: 1; }
+.recibo-line-qty  { color: var(--sage); white-space: nowrap; font-size: 12px; }
+.recibo-line-amt  { font-family: var(--font-label); font-weight: 700; white-space: nowrap; }
+.recibo-totals    { display: flex; flex-direction: column; gap: 6px; }
+.recibo-total-row { display: flex; justify-content: space-between; font-size: 13px; }
+.recibo-total-row.main {
+  font-family: var(--font-label); font-size: 22px; font-weight: 800;
+  border-top: 2px solid var(--coffee); padding-top: 8px; margin-top: 4px;
+}
+.recibo-payments  { display: flex; flex-direction: column; gap: 4px; }
+.recibo-pay-row   { display: flex; justify-content: space-between; font-size: 12px; color: var(--sage); }
+.recibo-pay-row span:last-child { font-weight: 600; color: var(--coffee); }
+.recibo-badge {
+  border-radius: var(--radius-sm); padding: 8px 14px;
+  font-family: var(--font-label); font-size: 13px; font-weight: 700; text-align: center;
+}
+.recibo-badge.ok     { background: var(--lime); color: var(--coffee); }
+.recibo-badge.change { background: var(--lime); color: var(--coffee); }
+.recibo-actions { display: flex; gap: 10px; }
+.btn-print {
+  flex: 1; padding: 12px; border: 2px solid var(--linen); border-radius: var(--radius-md);
+  font-family: var(--font-label); font-size: 13px; font-weight: 700;
+  color: var(--coffee); transition: border-color .12s;
+}
+.btn-print:hover { border-color: var(--sage); }
+.btn-nueva-venta {
+  flex: 2; padding: 12px; background: var(--sage); color: var(--bone);
+  border-radius: var(--radius-md); font-family: var(--font-label);
+  font-size: 14px; font-weight: 800; letter-spacing: .04em; transition: background .15s;
+}
+.btn-nueva-venta:hover { background: var(--sage-d); }
+
+@media print {
+  #demo-banner, .recibo-actions, .sidebar, .pos-topbar { display: none !important; }
+  body { background: white; padding-top: 0; }
+  #screen-recibo { background: white; padding: 0; }
+  .recibo-wrap { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; }
+}
 </style>
 </head>
 <body>
@@ -1385,7 +1446,150 @@ function confirmPayment() {
   showScreen('recibo');
 }
 
-function buildReceipt() {}
+function buildReceipt() {
+  const el = document.getElementById('screen-recibo');
+
+  const wrap = document.createElement('div');
+  wrap.className = 'recibo-wrap';
+  el.appendChild(wrap);
+
+  el._onShow = () => {
+    const sale = STATE.lastSale;
+    if (!sale) return;
+
+    while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+
+    /* Header */
+    const hdr = document.createElement('div');
+    hdr.className = 'recibo-header';
+
+    const bizName = document.createElement('div');
+    bizName.className = 'recibo-biz';
+    bizName.textContent = 'María Pestañas Rusas';
+
+    const metaEl = document.createElement('div');
+    metaEl.className = 'recibo-meta';
+    metaEl.textContent = sale.date.toLocaleString('es-MX', {
+      year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    }) + ' · ' + sale.cashier.name;
+
+    const saleNumEl = document.createElement('div');
+    saleNumEl.className = 'recibo-sale-num';
+    saleNumEl.textContent = '#' + sale.number;
+
+    hdr.append(bizName, metaEl, saleNumEl);
+
+    const div1 = document.createElement('hr');
+    div1.className = 'recibo-divider';
+
+    /* Lines */
+    const linesWrap = document.createElement('div');
+    linesWrap.className = 'recibo-lines';
+
+    sale.items.forEach(line => {
+      const price     = line.priceOverride !== null ? line.priceOverride : line.product.price;
+      const lineTotal = price * line.qty * (1 - line.discount / 100);
+
+      const row = document.createElement('div');
+      row.className = 'recibo-line';
+
+      const nm = document.createElement('div');
+      nm.className = 'recibo-line-name';
+      nm.textContent = line.product.name;
+
+      const qty = document.createElement('div');
+      qty.className = 'recibo-line-qty';
+      let qtyText = line.qty + ' × ' + fmt(price);
+      if (line.discount > 0) qtyText += ' (−' + line.discount + '%)';
+      qty.textContent = qtyText;
+
+      const amt = document.createElement('div');
+      amt.className = 'recibo-line-amt';
+      amt.textContent = fmt(lineTotal);
+
+      row.append(nm, qty, amt);
+      linesWrap.appendChild(row);
+    });
+
+    const div2 = document.createElement('hr');
+    div2.className = 'recibo-divider';
+
+    /* Totals */
+    const totals = document.createElement('div');
+    totals.className = 'recibo-totals';
+
+    const subRow = document.createElement('div');
+    subRow.className = 'recibo-total-row';
+    const subLbl = document.createElement('span');
+    subLbl.textContent = 'Subtotal';
+    const subVal = document.createElement('span');
+    subVal.textContent = fmt(sale.total);
+    subRow.append(subLbl, subVal);
+
+    const totRow = document.createElement('div');
+    totRow.className = 'recibo-total-row main';
+    const totLbl = document.createElement('span');
+    totLbl.textContent = 'Total';
+    const totVal = document.createElement('span');
+    totVal.textContent = fmt(sale.total);
+    totRow.append(totLbl, totVal);
+
+    totals.append(subRow, totRow);
+
+    /* Payments */
+    const paysWrap = document.createElement('div');
+    paysWrap.className = 'recibo-payments';
+
+    sale.payments.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'recibo-pay-row';
+      const lb = document.createElement('span');
+      lb.textContent = p.method.icon + ' ' + p.method.label;
+      const am = document.createElement('span');
+      am.textContent = fmt(p.amount);
+      row.append(lb, am);
+      paysWrap.appendChild(row);
+    });
+
+    /* Badge */
+    const covered = sale.payments.reduce((s, p) => s + p.amount, 0);
+    const change  = covered - sale.total;
+    const badge = document.createElement('div');
+    badge.className = 'recibo-badge';
+    if (change > 0.001) {
+      badge.classList.add('change');
+      badge.textContent = 'Cambio: ' + fmt(change);
+    } else {
+      badge.classList.add('ok');
+      badge.textContent = '✓ Pagado';
+    }
+
+    /* Actions */
+    const actions = document.createElement('div');
+    actions.className = 'recibo-actions';
+
+    const btnPrint = document.createElement('button');
+    btnPrint.className = 'btn-print';
+    btnPrint.textContent = '🖨 Imprimir';
+    btnPrint.addEventListener('click', () => window.print());
+
+    const btnNew = document.createElement('button');
+    btnNew.className = 'btn-nueva-venta';
+    btnNew.textContent = 'Nueva venta';
+    btnNew.addEventListener('click', newSale);
+
+    actions.append(btnPrint, btnNew);
+
+    wrap.append(hdr, div1, linesWrap, div2, totals, paysWrap, badge, actions);
+  };
+}
+
+function newSale() {
+  cartClear();
+  STATE.payments = [];
+  showScreen('pos');
+}
 
 /* ============================================================
    BOOT
